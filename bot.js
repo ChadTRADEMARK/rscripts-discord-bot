@@ -28,7 +28,6 @@ function saveSentHistory(history) {
     } catch (e) {}
 }
 
-// Persistent version tracker stored in a separate file so it doesn't rely on history length
 function getCurrentVersion() {
     try {
         if (fs.existsSync(VERSION_FILE)) {
@@ -37,7 +36,7 @@ function getCurrentVersion() {
             if (parsed && parsed.version) return parsed.version;
         }
     } catch (e) {}
-    return '1.3.2'; // Default starting version
+    return '1.3.2';
 }
 
 function saveNextVersion(currentVer) {
@@ -57,10 +56,16 @@ function saveNextVersion(currentVer) {
 async function checkPageFast() {
     let browser;
     try {
+        // Updated for Linux/Render compatibility (uses bundled Chromium automatically)
         browser = await puppeteer.launch({
             headless: true,
-            executablePath: 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
+            args: [
+                '--no-sandbox', 
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--disable-gpu'
+            ]
         });
 
         const page = await browser.newPage();
@@ -98,7 +103,6 @@ async function checkPageFast() {
 
         await browser.close();
 
-        // Properly parse and format lines: Timestamp FIRST, changelog body below
         let rawLines = pageData.changelog
             .split('\n')
             .map(line => line.trim())
@@ -129,7 +133,6 @@ async function checkPageFast() {
         const alreadySent = sentHistory.includes(uniqueUpdateKey);
 
         if (!alreadySent && pageData.changelog !== 'No changelog found.') {
-            // Get current version for this new update, then increment for the next one
             let versionToDisplay = getCurrentVersion();
             console.log(`\n[!] BRAND NEW UPDATE DETECTED! Sending version v${versionToDisplay} to Discord...`);
 
@@ -137,7 +140,6 @@ async function checkPageFast() {
             sentHistory.push(uniqueUpdateKey);
             saveSentHistory(sentHistory);
 
-            // Save the next incremented version for future updates
             saveNextVersion(versionToDisplay);
 
             const channel = await client.channels.fetch(CHANNEL_ID);
