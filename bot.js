@@ -13,6 +13,7 @@ app.listen(PORT, () => console.log(`[Express] Health check server listening on p
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const CHANNEL_ID = '1563741078987735080';
 const SCRIPT_URL = 'https://rscripts.net/script/vrhands-for-pc-mobile-coming-soon-MCpL';
+const BOT_SECRET = process.env.BOT_SECRET || 'SuperSecretBotKey123';
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 const HISTORY_FILE = 'sent_updates.json';
@@ -60,16 +61,16 @@ function saveNextVersion(currentVer) {
 
 async function checkPageFast() {
     try {
-        // Using a different public proxy endpoint with a randomized query parameter to avoid caching/rate limits
-        const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(SCRIPT_URL)}&_t=${Date.now()}`;
-        const { data: html } = await axios.get(proxyUrl, { timeout: 15000 });
-        
-        if (!html) {
-            throw new Error('Empty response from proxy');
-        }
+        const { data: html } = await axios.get(SCRIPT_URL, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                'X-Bot-Bypass': BOT_SECRET
+            },
+            timeout: 15000
+        });
 
         const $ = cheerio.load(html);
-        
         const titleText = $('h1').first().text().trim() || 'VR Hands Script';
         
         let changelogText = 'No changelog found.';
@@ -81,11 +82,7 @@ async function checkPageFast() {
             }
         });
 
-        let rawLines = changelogText
-            .split('\n')
-            .map(line => line.trim())
-            .filter(line => line.length > 0);
-
+        let rawLines = changelogText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
         let timeLineIndex = rawLines.findIndex(line => line.includes('2026') && (line.includes('AM') || line.includes('PM')));
         
         let timestampStr = timeLineIndex !== -1 ? rawLines[timeLineIndex] : 'Recent Update';
@@ -117,7 +114,6 @@ async function checkPageFast() {
             fs.writeFileSync('changelog.txt', formattedChangelog, 'utf8');
             sentHistory.push(uniqueUpdateKey);
             saveSentHistory(sentHistory);
-
             saveNextVersion(versionToDisplay);
 
             const channel = await client.channels.fetch(CHANNEL_ID);
@@ -149,9 +145,9 @@ async function checkPageFast() {
 }
 
 client.once('ready', () => {
-    console.log('Bot logged in as ' + client.user.tag + '. Proxy checker active (every 60 seconds).');
+    console.log('Bot logged in as ' + client.user.tag + '. Checker active (every 60 seconds).');
     checkPageFast();
-    // Checked every 60 seconds to completely avoid rate limits (429 errors)
+    // Checked every 60 seconds to completely avoid rate limits and timeouts
     setInterval(checkPageFast, 60000);
 });
 
