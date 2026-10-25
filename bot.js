@@ -60,15 +60,14 @@ function saveNextVersion(currentVer) {
 
 async function checkPageFast() {
     try {
-        // Route through a free public CORS proxy to dodge Cloudflare's datacenter IP block cleanly
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(SCRIPT_URL)}`;
-        const { data: responseData } = await axios.get(proxyUrl, { timeout: 15000 });
+        // Using a different public proxy endpoint with a randomized query parameter to avoid caching/rate limits
+        const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(SCRIPT_URL)}&_t=${Date.now()}`;
+        const { data: html } = await axios.get(proxyUrl, { timeout: 15000 });
         
-        if (!responseData || !responseData.contents) {
-            throw new Error('Failed to fetch via proxy');
+        if (!html) {
+            throw new Error('Empty response from proxy');
         }
 
-        const html = responseData.contents;
         const $ = cheerio.load(html);
         
         const titleText = $('h1').first().text().trim() || 'VR Hands Script';
@@ -150,9 +149,10 @@ async function checkPageFast() {
 }
 
 client.once('ready', () => {
-    console.log('Bot logged in as ' + client.user.tag + '. Proxy checker active (every 10 seconds).');
+    console.log('Bot logged in as ' + client.user.tag + '. Proxy checker active (every 60 seconds).');
     checkPageFast();
-    setInterval(checkPageFast, 10000);
+    // Checked every 60 seconds to completely avoid rate limits (429 errors)
+    setInterval(checkPageFast, 60000);
 });
 
 client.login(DISCORD_TOKEN);
