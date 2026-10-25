@@ -3,21 +3,17 @@ const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder
 const axios = require('axios');
 const cheerio = require('cheerio');
 const fs = require('fs');
-const https = require('https');
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const CHANNEL_ID = '1563741078987735080';
 const SCRIPT_URL = 'https://rscripts.net/script/vrhands-for-pc-mobile-coming-soon-MCpL';
 
+// Route through a free CORS/proxy fetch layer to bypass datacenter IP blocks
+const PROXY_URL = `https://api.allorigins.win/get?url=${encodeURIComponent(SCRIPT_URL)}`;
+
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 const HISTORY_FILE = 'sent_updates.json';
 const VERSION_FILE = 'version_state.json';
-
-// Create a custom HTTPS agent to avoid default Node TLS signature flags
-const agent = new https.Agent({  
-    rejectUnauthorized: false,
-    secureOptions: require('crypto').constants.SSL_OP_LEGACY_SERVER_CONNECT
-});
 
 function getSentHistory() {
     try {
@@ -63,26 +59,13 @@ function saveNextVersion(currentVer) {
 
 async function checkPageFast() {
     try {
-        const { data: html } = await axios.get(SCRIPT_URL, {
-            httpsAgent: agent,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'Referer': 'https://rscripts.net/',
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache',
-                'Sec-Ch-Ua': '"Chromium";v="122", "Not(A:Brand";v="8", "Google Chrome";v="122"',
-                'Sec-Ch-Ua-Mobile': '?0',
-                'Sec-Ch-Ua-Platform': '"Windows"',
-                'Sec-Fetch-Dest': 'document',
-                'Sec-Fetch-Mode': 'navigate',
-                'Sec-Fetch-Site': 'same-origin',
-                'Sec-Fetch-User': '?1',
-                'Upgrade-Insecure-Requests': '1'
-            }
-        });
+        const response = await axios.get(PROXY_URL, { timeout: 15000 });
+        const html = response.data && response.data.contents ? response.data.contents : null;
+
+        if (!html) {
+            console.error('Error checking page: Empty response from proxy');
+            return;
+        }
 
         const $ = cheerio.load(html);
         
