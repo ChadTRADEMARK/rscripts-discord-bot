@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node bot.js",
-    "postinstall": "npx puppeteer browsers install chrome"
+    "postinstall": "node node_modules/puppeteer/install.mjs"
   },
   "allowScripts": {
     "puppeteer@25.16.0": true
