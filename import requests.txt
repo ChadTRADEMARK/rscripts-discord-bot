@@ -1,0 +1,21 @@
+import requests
+
+WEBHOOK_URL = "https://discord.com/api/webhooks/1563983611114291400/FJ11dvYY1z7Q9-w8ki2VMk_8KRro9DZ06FvztFInayxPZIKRgpSXiofZbR1bixdvf17I"
+
+# Send initial message (must add ?wait=true to receive the Message ID back)
+response = requests.post(
+    f"{WEBHOOK_URL}?wait=true",
+    json={
+        "embeds": [{
+            "title": "⚡ REAL - Live System Status",
+            "description": "Initializing status tracker...",
+            "color": 5763719
+        }]
+    }
+)
+
+if response.status_code == 200:
+    message_id = response.json()["id"]
+    print(f"SUCCESS! Copy this MESSAGE_ID: {message_id}")
+else:
+    print(f"Error: {response.status_code} - {response.text}")

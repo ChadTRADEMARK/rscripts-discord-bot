@@ -1,0 +1,4 @@
+@echo off
+cd /d C:\Users\User\OneDrive\Desktop\rscripts-discord-bot
+node bot.js
+pause

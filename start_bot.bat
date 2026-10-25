@@ -1,0 +1,6 @@
+@echo off
+title VRHANDS Bot Ecosystem
+echo Starting Live Status Embed Updater...
+start cmd /k "node updater.js"
+echo Starting Roblox Update Predictor Tracker...
+start cmd /k "node tracker.js"
