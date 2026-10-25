@@ -3,12 +3,17 @@ const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder
 const axios = require('axios');
 const cheerio = require('cheerio');
 const fs = require('fs');
+const express = require('express');
+
+// Render health check server setup to prevent service spin-down
+const app = express();
+const PORT = process.env.PORT || 3000;
+app.get('/', (req, res) => res.send('Bot is active and running!'));
+app.listen(PORT, () => console.log(`[Express] Health check server listening on port ${PORT}`));
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const CHANNEL_ID = '1563741078987735080';
 const SCRIPT_URL = 'https://rscripts.net/script/vrhands-for-pc-mobile-coming-soon-MCpL';
-
-// Must match the secret value you set in your Cloudflare WAF rule
 const BOT_SECRET = process.env.BOT_SECRET || 'SuperSecretBotKey123';
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
@@ -59,7 +64,6 @@ function saveNextVersion(currentVer) {
 
 async function checkPageFast() {
     try {
-        // Direct request with the secret bypass header so Cloudflare lets it through
         const { data: html } = await axios.get(SCRIPT_URL, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
