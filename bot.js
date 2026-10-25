@@ -8,6 +8,9 @@ const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const CHANNEL_ID = '1563741078987735080';
 const SCRIPT_URL = 'https://rscripts.net/script/vrhands-for-pc-mobile-coming-soon-MCpL';
 
+// Must match the secret value you set in your Cloudflare WAF rule
+const BOT_SECRET = process.env.BOT_SECRET || 'SuperSecretBotKey123';
+
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 const HISTORY_FILE = 'sent_updates.json';
 const VERSION_FILE = 'version_state.json';
@@ -56,16 +59,17 @@ function saveNextVersion(currentVer) {
 
 async function checkPageFast() {
     try {
-        // Use AllOrigins with JSON wrapper format which handles routing reliably
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(SCRIPT_URL)}`;
-        const response = await axios.get(proxyUrl, { timeout: 20000 });
-        
-        if (!response.data || !response.data.contents) {
-            console.error('Error checking page: Invalid proxy payload received.');
-            return;
-        }
+        // Direct request with the secret bypass header so Cloudflare lets it through
+        const { data: html } = await axios.get(SCRIPT_URL, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'X-Bot-Bypass': BOT_SECRET
+            },
+            timeout: 15000
+        });
 
-        const html = response.data.contents;
         const $ = cheerio.load(html);
         
         const titleText = $('h1').first().text().trim() || 'VR Hands Script';
