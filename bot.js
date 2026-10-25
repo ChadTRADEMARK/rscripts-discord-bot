@@ -11,9 +11,9 @@ app.get('/', (req, res) => res.send('Bot is active and running!'));
 app.listen(PORT, () => console.log(`[Express] Health check server listening on port ${PORT}`));
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
+const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY;
 const CHANNEL_ID = '1563741078987735080';
 const SCRIPT_URL = 'https://rscripts.net/script/vrhands-for-pc-mobile-coming-soon-MCpL';
-const BOT_SECRET = process.env.BOT_SECRET || 'SuperSecretBotKey123';
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 const HISTORY_FILE = 'sent_updates.json';
@@ -61,14 +61,14 @@ function saveNextVersion(currentVer) {
 
 async function checkPageFast() {
     try {
-        const { data: html } = await axios.get(SCRIPT_URL, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-                'X-Bot-Bypass': BOT_SECRET
-            },
-            timeout: 15000
-        });
+        if (!SCRAPER_API_KEY) {
+            console.error('Error: SCRAPER_API_KEY is not set in environment variables.');
+            return;
+        }
+
+        // Route through ScraperAPI to bypass Cloudflare completely
+        const targetUrl = `http://api.scraperapi.com?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(SCRIPT_URL)}`;
+        const { data: html } = await axios.get(targetUrl, { timeout: 30000 });
 
         const $ = cheerio.load(html);
         const titleText = $('h1').first().text().trim() || 'VR Hands Script';
@@ -145,10 +145,10 @@ async function checkPageFast() {
 }
 
 client.once('ready', () => {
-    console.log('Bot logged in as ' + client.user.tag + '. Checker active (every 60 seconds).');
+    console.log('Bot logged in as ' + client.user.tag + '. ScraperAPI checker active (every 120 seconds).');
     checkPageFast();
-    // Checked every 60 seconds to completely avoid rate limits and timeouts
-    setInterval(checkPageFast, 60000);
+    // Checked every 120 seconds (2 minutes) to stay well under the 1000 free monthly requests limit
+    setInterval(checkPageFast, 120000);
 });
 
 client.login(DISCORD_TOKEN);
