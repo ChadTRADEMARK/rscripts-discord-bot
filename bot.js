@@ -1,6 +1,7 @@
 ﻿require('dotenv').config();
 const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const puppeteer = require('puppeteer');
+const axios = require('axios');
+const cheerio = require('cheerio');
 const fs = require('fs');
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
@@ -54,56 +55,28 @@ function saveNextVersion(currentVer) {
 }
 
 async function checkPageFast() {
-    let browser;
     try {
-        // Updated for Linux/Render compatibility (uses bundled Chromium automatically)
-        browser = await puppeteer.launch({
-            headless: true,
-            args: [
-                '--no-sandbox', 
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--disable-gpu'
-            ]
+        const { data: html } = await axios.get(SCRIPT_URL, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
         });
 
-        const page = await browser.newPage();
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+        const $ = cheerio.load(html);
         
-        await page.setCacheEnabled(false);
-        await page.goto(SCRIPT_URL, { waitUntil: 'networkidle2', timeout: 30000 });
-        await new Promise(r => setTimeout(r, 4000));
-
-        // Click the "Changes" button to open the dropdown menu
-        await page.evaluate(() => {
-            const buttons = Array.from(document.querySelectorAll('button'));
-            const changesBtn = buttons.find(el => el.innerText && el.innerText.trim().toLowerCase().includes('changes'));
-            if (changesBtn) changesBtn.click();
+        const titleText = $('h1').first().text().trim() || 'VR Hands Script';
+        
+        // Grab text blocks containing date indicators
+        let changelogText = 'No changelog found.';
+        $('div').each((_, el) => {
+            const text = $(el).text().trim();
+            if (text.includes('2026') && (text.includes('AM') || text.includes('PM')) && text.length < 300) {
+                changelogText = text;
+                return false; // break loop on first match
+            }
         });
 
-        await new Promise(r => setTimeout(r, 2500));
-
-        const pageData = await page.evaluate(() => {
-            const titleEl = document.querySelector('h1') || document.querySelector('.script-title');
-            
-            const allDivs = Array.from(document.querySelectorAll('div'));
-            const entryBlocks = allDivs.filter(el => {
-                const text = el.innerText || '';
-                return text.includes('2026') && (text.includes('AM') || text.includes('PM')) && text.length < 300 && el.childElementCount < 4;
-            });
-
-            let topmostEntry = entryBlocks.length > 0 ? entryBlocks[0].innerText.trim() : 'No changelog found.';
-
-            return {
-                title: titleEl ? titleEl.innerText.trim() : 'VR Hands Script',
-                changelog: topmostEntry
-            };
-        });
-
-        await browser.close();
-
-        let rawLines = pageData.changelog
+        let rawLines = changelogText
             .split('\n')
             .map(line => line.trim())
             .filter(line => line.length > 0);
@@ -119,7 +92,7 @@ async function checkPageFast() {
         let formattedChangelog = bodyLines.map(line => '+ ' + line.replace(/^\+\s*/, '')).join('\n');
         let quoteBlock = formattedChangelog.split('\n').map(line => '> ' + line).join('\n');
 
-        let uniqueUpdateKey = pageData.title + '::' + cleanBodyText;
+        let uniqueUpdateKey = titleText + '::' + cleanBodyText;
         let sentHistory = getSentHistory();
 
         if (sentHistory.length === 0) {
@@ -132,7 +105,7 @@ async function checkPageFast() {
 
         const alreadySent = sentHistory.includes(uniqueUpdateKey);
 
-        if (!alreadySent && pageData.changelog !== 'No changelog found.') {
+        if (!alreadySent && changelogText !== 'No changelog found.') {
             let versionToDisplay = getCurrentVersion();
             console.log(`\n[!] BRAND NEW UPDATE DETECTED! Sending version v${versionToDisplay} to Discord...`);
 
@@ -147,7 +120,7 @@ async function checkPageFast() {
             const embed = new EmbedBuilder()
                 .setColor(0x2B2D31)
                 .setTitle('U P D A T E')
-                .setDescription('🟢 **' + pageData.title + '**\nRestart the script to apply the update, or use the download button below.')
+                .setDescription('🟢 **' + titleText + '**\nRestart the script to apply the update, or use the download button below.')
                 .addFields(
                     { name: 'Script Version:', value: '`v' + versionToDisplay + '`', inline: false },
                     { name: 'Released:', value: '`' + timestampStr + '`', inline: false },
@@ -166,7 +139,6 @@ async function checkPageFast() {
         }
 
     } catch (error) {
-        if (browser) await browser.close();
         console.error('Error checking page:', error.message);
     }
 }

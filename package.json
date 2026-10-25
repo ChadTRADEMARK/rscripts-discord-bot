@@ -4,14 +4,9 @@
     "cheerio": "^1.2.0",
     "discord.js": "^14.27.0",
     "dotenv": "^18.0.9",
-    "express": "^5.3.0",
-    "puppeteer": "^25.16.0"
+    "express": "^5.3.0"
   },
   "scripts": {
-    "start": "node bot.js",
-    "postinstall": "node node_modules/puppeteer/lib/cjs/puppeteer/node/cli.js browsers install chrome"
-  },
-  "allowScripts": {
-    "puppeteer@25.16.0": true
+    "start": "node bot.js"
   }
 }
