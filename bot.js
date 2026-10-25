@@ -5,7 +5,6 @@ const cheerio = require('cheerio');
 const fs = require('fs');
 const express = require('express');
 
-// Render health check server setup to prevent service spin-down
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('Bot is active and running!'));
@@ -14,7 +13,6 @@ app.listen(PORT, () => console.log(`[Express] Health check server listening on p
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const CHANNEL_ID = '1563741078987735080';
 const SCRIPT_URL = 'https://rscripts.net/script/vrhands-for-pc-mobile-coming-soon-MCpL';
-const BOT_SECRET = process.env.BOT_SECRET || 'SuperSecretBotKey123';
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 const HISTORY_FILE = 'sent_updates.json';
@@ -52,10 +50,8 @@ function saveNextVersion(currentVer) {
     try {
         let clean = currentVer.replace(/^v/, '');
         let parts = clean.split('.').map(Number);
-        
         parts[2] = (parts[2] || 0) + 1;
         let nextVer = parts.join('.');
-        
         fs.writeFileSync(VERSION_FILE, JSON.stringify({ version: nextVer }, null, 2), 'utf8');
         return nextVer;
     } catch (e) {}
@@ -64,16 +60,15 @@ function saveNextVersion(currentVer) {
 
 async function checkPageFast() {
     try {
-        const { data: html } = await axios.get(SCRIPT_URL, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'X-Bot-Bypass': BOT_SECRET
-            },
-            timeout: 15000
-        });
+        // Route through a free public CORS proxy to dodge Cloudflare's datacenter IP block cleanly
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(SCRIPT_URL)}`;
+        const { data: responseData } = await axios.get(proxyUrl, { timeout: 15000 });
+        
+        if (!responseData || !responseData.contents) {
+            throw new Error('Failed to fetch via proxy');
+        }
 
+        const html = responseData.contents;
         const $ = cheerio.load(html);
         
         const titleText = $('h1').first().text().trim() || 'VR Hands Script';
@@ -155,7 +150,7 @@ async function checkPageFast() {
 }
 
 client.once('ready', () => {
-    console.log('Bot logged in as ' + client.user.tag + '. Fast checker active (every 10 seconds).');
+    console.log('Bot logged in as ' + client.user.tag + '. Proxy checker active (every 10 seconds).');
     checkPageFast();
     setInterval(checkPageFast, 10000);
 });
