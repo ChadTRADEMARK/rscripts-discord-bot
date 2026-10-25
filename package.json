@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node bot.js",
-    "postinstall": "node node_modules/puppeteer/install.mjs"
+    "postinstall": "node node_modules/puppeteer/install.js"
   },
   "allowScripts": {
     "puppeteer@25.16.0": true
