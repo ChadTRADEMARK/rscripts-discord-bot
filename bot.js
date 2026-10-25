@@ -8,8 +8,8 @@ const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const CHANNEL_ID = '1563741078987735080';
 const SCRIPT_URL = 'https://rscripts.net/script/vrhands-for-pc-mobile-coming-soon-MCpL';
 
-// Route through a free CORS/proxy fetch layer to bypass datacenter IP blocks
-const PROXY_URL = `https://api.allorigins.win/get?url=${encodeURIComponent(SCRIPT_URL)}`;
+// Use CodeTabs fast proxy endpoint
+const PROXY_URL = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(SCRIPT_URL)}`;
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 const HISTORY_FILE = 'sent_updates.json';
@@ -59,8 +59,9 @@ function saveNextVersion(currentVer) {
 
 async function checkPageFast() {
     try {
-        const response = await axios.get(PROXY_URL, { timeout: 15000 });
-        const html = response.data && response.data.contents ? response.data.contents : null;
+        // Increased timeout to 30000ms (30 seconds)
+        const response = await axios.get(PROXY_URL, { timeout: 30000 });
+        const html = response.data;
 
         if (!html) {
             console.error('Error checking page: Empty response from proxy');
